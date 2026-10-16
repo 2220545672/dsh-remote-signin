@@ -38,6 +38,15 @@ export const BRIDGE_PATH = "/remote-login";
 export const BRIDGE_PATH_SLASH = "/remote-login/";
 export const PANEL_PATH = "/remote-signin/inpage.js";
 
+/** This package's version, read once so a support log says which build is loaded. */
+const VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+})();
+
 const HTML_HEADERS = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "no-store",
@@ -225,7 +234,7 @@ export function apply(ctx, config = {}) {
 
   if (!claimSignIn(ctx, claim)) return;
   serveAndInject(ctx, { bridge, panel });
-  console.log(`[remote-signin] active — claim ${claim}, panel at ${PANEL_PATH}, page at ${BRIDGE_PATH}`);
+  console.log(`[remote-signin] active — v${VERSION}, claim ${claim}, panel at ${PANEL_PATH}, page at ${BRIDGE_PATH}`);
 }
 
 export default { name, inject, apply };

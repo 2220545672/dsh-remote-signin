@@ -13,3 +13,8 @@ First release, extracted from the `dsh-unraid` image so it can be maintained on 
 * Serves the same thing as a standalone page at `/remote-login`.
 * Fails soft: an unusable claim, a missing asset or an upstream rename leaves DSH running
   with upstream behaviour and one log line.
+
+## 0.1.1 — 2026-10-16
+
+* The activation line names the loaded version (`[remote-signin] active — v0.1.1, …`), so a
+  support log says which build an image carries without inspecting it.
