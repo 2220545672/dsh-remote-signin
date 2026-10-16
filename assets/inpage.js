@@ -107,27 +107,47 @@
 
   /** Build the panel once; later calls only toggle it. */
   function build() {
+    // Styled entirely from the harness design tokens (`--dsw-*`, defined on :root by
+    // @deepseek-ai/dsh-client-ui-theme): the surface, radius, elevation, label colours,
+    // button fill and state colours all come from the running theme. The conventions are
+    // the harness's own small floating card — layer-2 surface, radius-lg, shadow-lv3,
+    // 12px 16px padding, 14px/22px text — so the panel follows the user's light/dark
+    // setting and any future restyle instead of hard-coding a second look. Fallbacks keep
+    // it readable if the theme has not loaded; there is deliberately no
+    // prefers-color-scheme query — the app's theme is a setting, not the OS preference.
     var style = document.createElement("style");
     style.textContent = [
-      "#dsh-remote-signin-panel{position:fixed;right:16px;bottom:16px;z-index:2147483000;width:min(24rem,calc(100vw - 32px));",
-      "box-sizing:border-box;padding:14px 16px 12px;border-radius:12px;border:1px solid var(--rs-line);",
-      "background:var(--rs-bg);color:var(--rs-fg);box-shadow:0 8px 30px rgba(0,0,0,.18);",
-      "font:13px/1.55 -apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"PingFang SC\",\"Microsoft YaHei\",sans-serif}",
-      "#dsh-remote-signin-panel h2{margin:0 0 6px;font-size:14px;font-weight:600}",
-      "#dsh-remote-signin-panel p{margin:0 0 8px;color:var(--rs-muted)}",
-      "#dsh-remote-signin-panel textarea{width:100%;box-sizing:border-box;min-height:3.4rem;margin:0 0 8px;padding:6px 8px;",
-      "font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:inherit;background:transparent;",
-      "border:1px solid var(--rs-line);border-radius:8px;resize:vertical}",
+      "#dsh-remote-signin-panel{position:fixed;right:16px;bottom:16px;z-index:2147483000;",
+      "box-sizing:border-box;width:min(420px,calc(100vw - 32px));padding:12px 16px 14px;",
+      "border-radius:var(--dsw-radius-lg,16px);",
+      "background:var(--dsw-alias-bg-layer-2,var(--dsw-alias-bg-layer-1,#fff));",
+      "box-shadow:var(--dsw-shadow-lv3,0 0 1px rgba(0,0,0,.2),0 12px 32px rgba(0,0,0,.08));",
+      "color:var(--dsw-alias-label-primary,#0f1115);font-family:var(--dsw-font-family,inherit);",
+      "font-size:14px;line-height:22px}",
+      "#dsh-remote-signin-panel h2{margin:0 0 2px;font-size:14px;line-height:22px;font-weight:600;color:inherit}",
+      "#dsh-remote-signin-panel p{margin:0 0 10px;font-size:13px;line-height:20px;",
+      "color:var(--dsw-alias-label-secondary,#61666b)}",
+      "#dsh-remote-signin-panel textarea{display:block;width:100%;box-sizing:border-box;min-height:60px;",
+      "margin:0 0 12px;padding:8px 10px;",
+      "font-family:var(--dsh-font-family-code,var(--dsh-font-family-code-default,ui-monospace,SFMono-Regular,Menlo,Consolas,monospace));",
+      "font-size:12px;line-height:18px;color:inherit;background:var(--dsw-alias-bg-layer-1,transparent);",
+      "border:1px solid var(--dsw-alias-border-l3,rgba(0,0,0,.12));border-radius:var(--dsw-radius-sm,8px);",
+      "resize:vertical;outline:none}",
+      "#dsh-remote-signin-panel textarea:focus{border-color:var(--dsw-alias-brand-primary,#4d6bfe)}",
       "#dsh-remote-signin-panel .rs-actions{display:flex;gap:8px;align-items:center}",
-      "#dsh-remote-signin-panel button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:6px 12px;cursor:pointer;",
-      "background:var(--rs-accent);color:#fff}",
+      "#dsh-remote-signin-panel button{font:inherit;font-size:13px;font-weight:500;border:0;cursor:pointer;",
+      "height:32px;padding:0 12px;border-radius:var(--dsw-radius-sm,8px);",
+      "background:var(--dsw-alias-button-primary-fill,#4d6bfe);color:var(--dsw-alias-label-primary-foreground,#fff)}",
+      "#dsh-remote-signin-panel button:hover{background:var(--dsw-alias-button-primary-hover,#3f5ae0)}",
       "#dsh-remote-signin-panel button[disabled]{opacity:.5;cursor:default}",
-      "#dsh-remote-signin-panel .rs-close{margin-left:auto;background:transparent;color:var(--rs-muted);font-weight:400;padding:4px 6px}",
-      "#dsh-remote-signin-panel .rs-status{margin-top:8px;min-height:1.3em}",
-      "#dsh-remote-signin-panel .rs-status[data-kind=error]{color:var(--rs-err)}",
-      "#dsh-remote-signin-panel .rs-status[data-kind=ok]{color:var(--rs-ok)}",
-      "#dsh-remote-signin-panel{--rs-fg:#1b1c1e;--rs-muted:#5c6169;--rs-line:#d9dbe0;--rs-bg:#fff;--rs-accent:#4d6bfe;--rs-err:#c0392b;--rs-ok:#1e874b}",
-      "@media (prefers-color-scheme:dark){#dsh-remote-signin-panel{--rs-fg:#e8e9ec;--rs-muted:#a2a7b0;--rs-line:#3a3d43;--rs-bg:#1b1d22;--rs-accent:#8ea2ff;--rs-err:#ff8b7d;--rs-ok:#5ddc9a}}",
+      "#dsh-remote-signin-panel .rs-close{margin-left:auto;width:28px;height:28px;padding:0;font-weight:400;",
+      "background:transparent;color:var(--dsw-alias-label-tertiary,#81858c);border-radius:var(--dsw-radius-sm,8px)}",
+      "#dsh-remote-signin-panel .rs-close:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06));",
+      "color:var(--dsw-alias-label-primary,#0f1115)}",
+      "#dsh-remote-signin-panel .rs-status{margin-top:10px;min-height:20px;font-size:12px;line-height:18px;",
+      "color:var(--dsw-alias-label-caption,#81858c)}",
+      "#dsh-remote-signin-panel .rs-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#d92d20)}",
+      "#dsh-remote-signin-panel .rs-status[data-kind=ok]{color:var(--dsw-alias-state-success-primary,#12b76a)}",
     ].join("");
     document.head.appendChild(style);
 

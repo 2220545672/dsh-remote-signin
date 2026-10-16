@@ -106,6 +106,10 @@ The claim is the only setting, and it has a sane default:
   in memory. This plugin only chooses which loopback *string* is registered.
 * **It does not touch a browser that is already on loopback** (`ssh -L`, the desktop app):
   those origins pass through unchanged.
+* **It does not invent a look.** The panel is styled from the harness's own design
+  tokens (`--dsw-*`: surface, radius, elevation, label and state colours, primary button
+  fill), so it follows the app's theme — including a user-chosen dark mode — and any
+  future restyle, and a test fails if a hard-coded colour creeps back in.
 * **It does not store or log the code, the state or the token.** The only line it writes
   is the origin it claimed for, once per attempt. The pasted address is parsed in the
   browser; only `code` and `state` are re-encoded and sent — to this origin's own

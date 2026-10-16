@@ -29,7 +29,11 @@ measurements that justify the design, and the rules the code is not allowed to b
    panel does not appear, the sign-in cannot be finished. Keep its probe, its extraction
    rules and every status it reports covered by tests, and keep the image's smoke test
    asserting that the document really carries the injected script.
-5. **Keep the tests dependency-free.** `node --test` and `test-support/dom.mjs` only. No
+5. **Style from the harness tokens, never from a palette of your own.** The panel uses
+   `--dsw-*` (declared on `:root` by `@deepseek-ai/dsh-client-ui-theme`) with fallbacks,
+   and follows the app's theme rather than `prefers-color-scheme`. `test/inpage.test.mjs`
+   pins this: no hard-coded colour may survive stripping the `var()` fallbacks.
+6. **Keep the tests dependency-free.** `node --test` and `test-support/dom.mjs` only. No
    browser, no build step, no network.
 
 ## Before committing

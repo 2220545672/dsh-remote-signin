@@ -127,6 +127,42 @@ test("the panel refuses anything that is not this sign-in's callback address", a
   assert.equal(dom.calls.length, 1, "nothing but the probe may have been fetched");
 });
 
+test("the panel is styled from the harness design tokens, not a second look", async () => {
+  const dom = await boot([{ status: 400, type: "basic" }]);
+  const style = dom.document.head.children.find((node) => node.tagName === "STYLE");
+  assert.ok(style, "the panel injects its own stylesheet");
+  const css = style.textContent;
+
+  // Surface, radius, elevation, colours and button fill all come from the running theme
+  // (@deepseek-ai/dsh-client-ui-theme defines them on :root), so the panel follows the
+  // app's light/dark setting and any future restyle instead of a look of its own.
+  for (const token of [
+    "--dsw-radius-lg",
+    "--dsw-alias-bg-layer-2",
+    "--dsw-shadow-lv3",
+    "--dsw-alias-bg-layer-1",
+    "--dsw-alias-border-l3",
+    "--dsw-alias-label-primary",
+    "--dsw-alias-label-secondary",
+    "--dsw-alias-button-primary-fill",
+    "--dsw-alias-button-primary-hover",
+    "--dsw-alias-interactive-bg-hover",
+    "--dsw-alias-state-error-primary",
+    "--dsw-alias-state-success-primary",
+    "--dsw-font-family",
+  ]) {
+    assert.match(css, new RegExp(`${token}\\s*,`), `${token} must be used, with a fallback`);
+  }
+
+  // Every colour is a token fallback, never a palette of its own: strip the var()
+  // expressions (including nested ones) and nothing coloured may be left.
+  let stripped = css;
+  for (let pass = 0; pass < 5; pass += 1) stripped = stripped.replace(/var\([^()]*\)/g, "var()");
+  assert.doesNotMatch(stripped, /#[0-9a-f]{3,8}\b/i, "colours must come from the theme, not from here");
+  // The app's theme is a setting applied to the document; the OS preference is not it.
+  assert.doesNotMatch(css, /prefers-color-scheme/, "follow the app theme, not the OS preference");
+});
+
 test("english locale renders english copy", async () => {
   const dom = await boot([{ status: 400, type: "basic" }], { lang: "en" });
   assert.match(hint(dom.document).textContent, /127\.0\.0\.1/);

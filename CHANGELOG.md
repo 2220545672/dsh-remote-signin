@@ -2,6 +2,17 @@
 
 Versions are what the `dsh-unraid` image pins, so a tag here is a deployment there.
 
+## 0.2.1 — 2026-10-16
+
+* The panel is styled from the harness design tokens (`--dsw-*`, declared by
+  `@deepseek-ai/dsh-client-ui-theme`) instead of a palette of its own: layer-2 surface,
+  `--dsw-radius-lg`, `--dsw-shadow-lv3`, the theme's label/state colours and its primary
+  button fill — the same conventions the harness uses for its own small floating cards.
+  The panel now follows the app's light/dark setting (the old build keyed off the OS
+  preference, which is not what the app themes with), and a future restyle reaches it for
+  free. A test pins that: tokens with fallbacks, no hard-coded colour, no
+  `prefers-color-scheme`.
+
 ## 0.2.0 — 2026-10-16
 
 * **The standalone page at `/remote-login` is gone.** The panel that the DSH document
