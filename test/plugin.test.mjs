@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BRIDGE_PATH, BRIDGE_PATH_SLASH, PANEL_PATH, apply } from "../src/index.js";
+import { PANEL_PATH, apply } from "../src/index.js";
 
 /**
  * A Cordis context stub recording everything the plugin touches.
@@ -72,7 +72,7 @@ function fakeResponse() {
   };
 }
 
-test("apply claims a remote origin, leaves loopback alone, and serves both assets", () => {
+test("apply claims a remote origin, leaves loopback alone, and serves the panel", () => {
   const { ctx, service, routes } = fakeContext();
   apply(ctx, { claimOrigin: "http://127.0.0.1:47821" });
 
@@ -84,20 +84,16 @@ test("apply claims a remote origin, leaves loopback alone, and serves both asset
     ["http://127.0.0.1:47821", "http://127.0.0.1:3081"],
   );
 
-  // Both ways to hand the code back are served, plus the panel script the page needs.
-  assert.deepEqual([...routes.keys()].sort(), [BRIDGE_PATH_SLASH, BRIDGE_PATH, PANEL_PATH].sort());
-
-  const page = fakeResponse();
-  routes.get(BRIDGE_PATH).handler({ method: "GET" }, page);
-  assert.equal(page.written.status, 200);
-  assert.match(page.written.headers["content-type"], /^text\/html/);
-  assert.equal(page.written.headers["cache-control"], "no-store");
-  assert.match(page.written.body, /oauth\/callback/);
+  // Exactly one path is served: the panel script the document injects.
+  assert.deepEqual([...routes.keys()], [PANEL_PATH]);
 
   const panel = fakeResponse();
   routes.get(PANEL_PATH).handler({ method: "GET" }, panel);
+  assert.equal(panel.written.status, 200);
   assert.match(panel.written.headers["content-type"], /^application\/javascript/);
+  assert.equal(panel.written.headers["cache-control"], "no-store");
   assert.match(panel.written.body, /remote-signin-panel/);
+  assert.match(panel.written.body, /oauth\/callback/, "the panel is the only way back, so it must carry the paste logic");
 
   // HEAD carries the headers but no body; anything else is refused.
   const head = fakeResponse();

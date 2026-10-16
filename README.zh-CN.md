@@ -5,7 +5,8 @@
 一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）插件：让**DeepSeek 账号**登录能在**不跑在 DSH 机器上**的浏览器里完成——局域网、Tailscale、反向代理后面都行。没有它，这种登录连开始都开始不了。
 
 ```
-[entrypoint] remote sign-in: on — a remote browser finishes the sign-in at /remote-login
+[entrypoint] remote sign-in: on — a remote browser finishes the sign-in in the DSH page
+[remote-signin] active — v0.2.0, claim http://127.0.0.1:47821, panel at /remote-signin/inpage.js
 [remote-signin] active — claim http://127.0.0.1:47821, panel at /remote-signin/inpage.js
 ```
 
@@ -39,13 +40,12 @@
                                           → 凭据落盘，对话框变已登录
 ```
 
-三部分，都在本包内：
+两部分，都在本包内：
 
 | 部件 | 说明 |
 |---|---|
-| `src/index.js` | 服务端插件：包装 `deepseekAccount.startSignIn`，把非回环的浏览器 origin 注册成声明的回环 origin；提供静态资源；把面板注入 DSH 文档。 |
-| `assets/inpage.js` | 面板：有登录等待时出现在 DSH 页面里，接收粘贴的回调地址，并把服务器的回答显示出来。 |
-| `assets/bridge.html` | 同样功能的独立页面 `/remote-login`，面板没出现（或你不想要面板）时用。 |
+| `src/index.js` | 服务端插件：包装 `deepseekAccount.startSignIn`，把非回环的浏览器 origin 注册成声明的回环 origin；提供面板脚本；把它注入 DSH 文档。 |
+| `assets/inpage.js` | 面板：有登录等待时出现在 DSH 页面里，接收粘贴的回调地址，并把服务器的回答显示出来。**它是唯一的回传入口**，没有第二个页面要找。 |
 
 ## 安装
 
@@ -96,21 +96,21 @@ patch 条目的 `name` 只从两个锚点解析：`@deepseek-ai/dsh` **安装**�
 
 | 现象 | 含义 |
 |---|---|
-| 面板一直不出现 | 插件没加载：`docker logs <容器名> \| grep remote-signin` 会说明原因。`/remote-login` 仍然可用，日志里也写了它的地址。 |
+| 面板一直不出现 | 插件没加载：`docker logs <容器名> \| grep remote-signin` 会说明原因（`off`、包缺失、`INACTIVE`）。没有兜底页面——排除原因后刷新即可。 |
 | 登录标签页显示 DeepSeek 报错而不是登录表单 | 同样是声明没生效，上游拒了这个 origin。 |
 | 面板说**没有正在等待的登录**（`404`） | 这次登录已过期（约 10 分钟），或者它属于**另一个 DSH 实例**——重建容器会作废它，而前一个实例遗留的标签页看上去还停在"等待登录"。请在**你正在用的那个标签页**里重新点一次 **Sign in**。 |
 | 面板说 state 不匹配（`400`） | 地址来自另一次尝试，或这个 code 已经被用掉了。 |
-| `/remote-signin/inpage.js` 或 `/remote-login` 返回 404 | 这两个路由由本插件注册；插件没加载就都没有。看上面的日志行。 |
+| `/remote-signin/inpage.js` 返回 404 | 这个路由由本插件注册；插件没加载，面板就永远不会出现。看上面的日志行。 |
 | 想回到旧行为 | 移除插件（或 dsh-unraid 镜像上设 `REMOTE_SIGNIN=off`）。 |
 
 ## 开发
 
 ```bash
-node --test        # 19 个测试，零依赖，不需要浏览器
+node --test        # 15 个测试，零依赖，不需要浏览器
 ```
 
 * `src/claim.js` 是纯函数，所以声明规则不用启动 DSH 就能测。
-* `test-support/dom.mjs` 是一个小 DOM 桩，足以让两个客户端资源在 `node --test` 下跑起来。面板与独立页面**有意**各自复制一份"地址提取 + 状态措辞"（两者都必须能独立工作），测试两边都覆盖。
+* `test-support/dom.mjs` 是一个小 DOM 桩，足以让面板在 `node --test` 下跑起来：探测节奏、关闭行为、地址提取规则、以及它报出的每一种状态。
 * 上游处于开发者预览阶段。插件只依赖两个契约——`deepseekAccount.startSignIn` 与 web server 的路由/index API——任一变化时它都只降级、不致命。
 
 MIT 许可，见 [CHANGELOG.md](CHANGELOG.md)。

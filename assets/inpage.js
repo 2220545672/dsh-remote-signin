@@ -123,7 +123,6 @@
       "background:var(--rs-accent);color:#fff}",
       "#dsh-remote-signin-panel button[disabled]{opacity:.5;cursor:default}",
       "#dsh-remote-signin-panel .rs-close{margin-left:auto;background:transparent;color:var(--rs-muted);font-weight:400;padding:4px 6px}",
-      "#dsh-remote-signin-panel a{color:var(--rs-accent);font-size:12px}",
       "#dsh-remote-signin-panel .rs-status{margin-top:8px;min-height:1.3em}",
       "#dsh-remote-signin-panel .rs-status[data-kind=error]{color:var(--rs-err)}",
       "#dsh-remote-signin-panel .rs-status[data-kind=ok]{color:var(--rs-ok)}",
@@ -157,12 +156,6 @@
     button.type = "button";
     button.textContent = t("Finish sign-in", "完成登录");
 
-    var link = document.createElement("a");
-    link.href = "/remote-login";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = t("standalone page", "独立页面");
-
     var close = document.createElement("button");
     close.type = "button";
     close.className = "rs-close";
@@ -179,7 +172,6 @@
     status.setAttribute("aria-live", "polite");
 
     actions.appendChild(button);
-    actions.appendChild(link);
     actions.appendChild(close);
     root.appendChild(title);
     root.appendChild(hint);

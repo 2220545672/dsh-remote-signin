@@ -7,10 +7,9 @@ measurements that justify the design, and the rules the code is not allowed to b
 
 | Path | Purpose |
 |---|---|
-| `src/index.js` | The plugin: claim wrapper, asset routes, index injection. |
+| `src/index.js` | The plugin: claim wrapper, the panel route, index injection. |
 | `src/claim.js` | Pure origin logic, exported for tests. |
-| `assets/inpage.js` | The in-page panel (client). |
-| `assets/bridge.html` | The standalone page at `/remote-login` (client). |
+| `assets/inpage.js` | The in-page panel (client) — the only way the code comes back. |
 | `cordis.patch.yml` | The loader entry a profile or `--patch` overlay picks up. |
 | `test/`, `test-support/` | `node --test` suites and the DOM stub they share. |
 
@@ -22,14 +21,14 @@ measurements that justify the design, and the rules the code is not allowed to b
    throw out of `apply`.
 2. **Never touch upstream's validation.** The completion path is upstream's
    `/oauth/callback` route: its one-time `state` check and its PKCE verifier. This plugin
-   chooses the redirect *string* and renders two ways to hand the code back; that is all.
-3. **No secrets in logs or markup.** Never log `code`, `state` or tokens. The panel and
-   the page take only `code` and `state` out of a pasted address, re-encode them, and send
-   them to this origin's own callback — never to a URL taken from the input.
-4. **Client assets stand alone.** `assets/inpage.js` and `assets/bridge.html` duplicate
-   their extraction and status vocabulary on purpose: each may be the only working path
-   (the panel can fail to load, the page can be reached directly). Keep both covered by
-   tests rather than factoring them together.
+   chooses the redirect *string* and renders the one place to hand the code back.
+3. **No secrets in logs or markup.** Never log `code`, `state` or tokens. The panel takes
+   only `code` and `state` out of a pasted address, re-encodes them, and sends them to
+   this origin's own callback — never to a URL taken from the input.
+4. **The panel is the only way back.** There is no second page to fall back on: if the
+   panel does not appear, the sign-in cannot be finished. Keep its probe, its extraction
+   rules and every status it reports covered by tests, and keep the image's smoke test
+   asserting that the document really carries the injected script.
 5. **Keep the tests dependency-free.** `node --test` and `test-support/dom.mjs` only. No
    browser, no build step, no network.
 

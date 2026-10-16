@@ -8,7 +8,8 @@ machine — the LAN, Tailscale, or anything behind a reverse proxy. Without it, 
 sign-in cannot even start.
 
 ```
-[entrypoint] remote sign-in: on — a remote browser finishes the sign-in at /remote-login
+[entrypoint] remote sign-in: on — a remote browser finishes the sign-in in the DSH page
+[remote-signin] active — v0.2.0, claim http://127.0.0.1:47821, panel at /remote-signin/inpage.js
 [remote-signin] active — claim http://127.0.0.1:47821, panel at /remote-signin/inpage.js
 ```
 
@@ -47,13 +48,12 @@ It splits the two halves of that check: the platform validates a **string**, whi
                                           kept in memory → credential stored, dialog turns green
 ```
 
-Three parts, all in this package:
+Two parts, both in this package:
 
 | Piece | What it is |
 |---|---|
-| `src/index.js` | Server plugin: wraps `deepseekAccount.startSignIn` so a non-loopback browser origin is registered as the claimed loopback origin, serves the assets, and injects the panel into the DSH document. |
-| `assets/inpage.js` | The panel: appears in the DSH page while a sign-in waits, takes the pasted callback address, and reports what the server answered. |
-| `assets/bridge.html` | The same thing as a standalone page at `/remote-login`, for when the panel did not appear (or is not wanted). |
+| `src/index.js` | Server plugin: wraps `deepseekAccount.startSignIn` so a non-loopback browser origin is registered as the claimed loopback origin, serves the panel script, and injects it into the DSH document. |
+| `assets/inpage.js` | The panel: appears in the DSH page while a sign-in waits, takes the pasted callback address, and reports what the server answered. It is the only way back — there is no second page to find. |
 
 ## Install
 
@@ -121,23 +121,23 @@ The claim is the only setting, and it has a sane default:
 
 | Symptom | What it means |
 |---|---|
-| The panel never appears | The plugin is not loaded: `docker logs <container> \| grep remote-signin` says why. `/remote-login` still works, and the log line names its address. |
+| The panel never appears | The plugin is not loaded: `docker logs <container> \| grep remote-signin` says why (`off`, a missing package, `INACTIVE`). There is no fallback page — remove the cause and reload. |
 | The login tab shows a DeepSeek error instead of a login form | Same cause — the claim was not applied, so upstream refused the origin. |
 | The panel says **no sign-in is waiting** (`404`) | The attempt expired (~10 minutes), or it belonged to a **different DSH instance** — recreating the container throws it away, and a tab left open from the previous instance still *looks* like it is waiting. Press **Sign in** again in the tab you are actually using. |
 | The panel says the state does not match (`400`) | The address came from a different attempt, or the code was already consumed. |
-| `/remote-signin/inpage.js` or `/remote-login` answers 404 | The routes are registered by this plugin; if it failed to load, both are missing. See the log line above. |
+| `/remote-signin/inpage.js` answers 404 | That route is registered by this plugin; if it failed to load, the panel can never appear. See the log line above. |
 | You want the old behaviour | Remove the plugin (or set `REMOTE_SIGNIN=off` on the dsh-unraid image). |
 
 ## Development
 
 ```bash
-node --test        # 19 tests, no dependencies, no browser
+node --test        # 15 tests, no dependencies, no browser
 ```
 
 * `src/claim.js` is pure so the claim rules can be tested without booting DSH.
-* `test-support/dom.mjs` is a small DOM stub, enough to run both client assets under
-  `node --test`. The panel and the standalone page intentionally duplicate their
-  extraction and status vocabulary (each has to stand on its own); the tests cover both.
+* `test-support/dom.mjs` is a small DOM stub, enough to run the panel under
+  `node --test`: its probe cadence, its dismissal, its extraction rules and every status
+  it reports.
 * Upstream is in developer preview. The plugin only depends on two contracts —
   `deepseekAccount.startSignIn` and the web server's route/index APIs — and fails soft
   when either changes.

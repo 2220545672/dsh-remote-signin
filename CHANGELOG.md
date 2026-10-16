@@ -2,6 +2,14 @@
 
 Versions are what the `dsh-unraid` image pins, so a tag here is a deployment there.
 
+## 0.2.0 — 2026-10-16
+
+* **The standalone page at `/remote-login` is gone.** The panel that the DSH document
+  injects is the one way back: it appears by itself while a sign-in waits, and a second
+  page asked the operator to know a URL the feature exists to make unnecessary. The
+  plugin now serves exactly one path (`/remote-signin/inpage.js`) and the panel no longer
+  links to a page that is not there.
+
 ## 0.1.0 — 2026-10-16
 
 First release, extracted from the `dsh-unraid` image so it can be maintained on its own.

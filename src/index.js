@@ -2,14 +2,12 @@
  * dsh-remote-signin — finish a DeepSeek account sign-in from a browser that is not
  * running on the DSH machine.
  *
- * The plugin is one of three parts; this file is the server half.
+ * The plugin is two parts; this file is the server half.
  *
- *   src/index.js        this file: claims the loopback redirect, serves the assets,
- *                       and injects the panel into the DSH page.
- *   assets/inpage.js    the panel itself: appears while a sign-in waits, takes the
- *                       pasted callback address, and reports what the server answered.
- *   assets/bridge.html  the same thing as a standalone page at /remote-login, for
- *                       when the panel did not appear (or is not wanted).
+ *   src/index.js      this file: claims the loopback redirect, serves the panel script,
+ *                     and injects it into the DSH page.
+ *   assets/inpage.js  the panel itself: appears while a sign-in waits, takes the pasted
+ *                     callback address, and reports what the server answered.
  *
  * Why any of it is needed: upstream only accepts a loopback `redirect_uri`, so the
  * platform's answer is delivered to an address on the *operator's* machine, where
@@ -18,7 +16,7 @@
  * Nothing about the flow's security is relaxed. The callback that completes it is
  * upstream's own route with upstream's one-time `state` check and the PKCE verifier it
  * keeps in memory; this plugin only chooses which loopback string is registered, and
- * adds the two ways to hand the code back.
+ * gives the operator one place to hand the code back.
  */
 
 import { readFileSync } from "node:fs";
@@ -33,9 +31,7 @@ export { DEFAULT_CLAIM_ORIGIN, isLoopbackCallbackOrigin, mapCallbackOrigin, norm
 /** Marks the wrapper so the startup check can find it through a tracing accessor. */
 const WRAPPER = Symbol.for("dsh.remote-signin.wrapper");
 
-/** Paths this plugin owns. Kept out of `/remote-login` so a Caddy route can coexist. */
-export const BRIDGE_PATH = "/remote-login";
-export const BRIDGE_PATH_SLASH = "/remote-login/";
+/** The one path this plugin serves: the panel script the document injects. */
 export const PANEL_PATH = "/remote-signin/inpage.js";
 
 /** This package's version, read once so a support log says which build is loaded. */
@@ -47,11 +43,6 @@ const VERSION = (() => {
   }
 })();
 
-const HTML_HEADERS = {
-  "content-type": "text/html; charset=utf-8",
-  "cache-control": "no-store",
-  "x-content-type-options": "nosniff",
-};
 const JS_HEADERS = {
   "content-type": "application/javascript; charset=utf-8",
   "cache-control": "no-store",
@@ -59,32 +50,30 @@ const JS_HEADERS = {
 };
 
 /**
- * Read one packaged asset.
- * @param file - asset file name.
+ * Read the packaged panel script.
  * @returns its text, or null (with one error line) when it cannot be read.
  */
-function readAsset(file) {
+function readPanel() {
   try {
-    return readFileSync(new URL(`../assets/${file}`, import.meta.url), "utf8");
+    return readFileSync(new URL("../assets/inpage.js", import.meta.url), "utf8");
   } catch (error) {
-    console.error(`[remote-signin] cannot read assets/${file}: ${error?.message ?? error}`);
+    console.error(`[remote-signin] cannot read assets/inpage.js: ${error?.message ?? error}`);
     return null;
   }
 }
 
 /**
- * Answer one request with a fixed body.
+ * Answer one request with the panel script.
  * @param body - response body.
- * @param headers - response headers.
  * @returns a webServer route handler.
  */
-function fixedBody(body, headers) {
+function servePanel(body) {
   return (req, res) => {
     if (req.method !== "GET" && req.method !== "HEAD") {
       res.writeHead(405, { allow: "GET, HEAD", "cache-control": "no-store" }).end();
       return;
     }
-    res.writeHead(200, { ...headers, "content-length": String(Buffer.byteLength(body)) });
+    res.writeHead(200, { ...JS_HEADERS, "content-length": String(Buffer.byteLength(body)) });
     res.end(req.method === "HEAD" ? undefined : body);
   };
 }
@@ -120,8 +109,8 @@ function claimSignIn(ctx, claim) {
   // Profiles reload their patches live, so this plugin can be applied again in the
   // same process. The wrapper is installed on a prototype, which is per-import and
   // therefore per-process: a second apply must not wrap the wrapper (double log lines
-  // for nothing), and it must still go on to serve its assets, because the previous
-  // apply's routes may already have been disposed with its plugin instance.
+  // for nothing), and it must still go on to serve the panel, because the previous
+  // apply's route may already have been disposed with its plugin instance.
   if (original?.[WRAPPER] === true) {
     console.log(`[remote-signin] the account service is already claimed (${claim}); keeping the existing wrapper`);
     return true;
@@ -165,36 +154,29 @@ function claimSignIn(ctx, claim) {
 }
 
 /**
- * Serve the standalone page and the panel script, and inject the panel into the DSH
- * document — the panel is what makes the flow automatic: it appears on its own while a
- * sign-in waits, instead of requiring the operator to remember a URL.
+ * Serve the panel script and inject it into the DSH document. The injection is what
+ * makes the flow automatic: the panel appears on its own while a sign-in waits, so the
+ * operator never has to know a URL.
  *
  * @param ctx - Cordis context.
- * @param assets - asset texts, read once at apply time.
+ * @param panel - the panel script, read once at apply time.
  */
-function serveAndInject(ctx, assets) {
+function serveAndInject(ctx, panel) {
   ctx.inject(["webServer"], (webCtx) => {
-    const routes = [
-      { path: BRIDGE_PATH, body: assets.bridge, headers: HTML_HEADERS },
-      { path: BRIDGE_PATH_SLASH, body: assets.bridge, headers: HTML_HEADERS },
-      { path: PANEL_PATH, body: assets.panel, headers: JS_HEADERS },
-    ];
-    for (const route of routes) {
-      // Routes are a composition-level contract and a duplicate (kind, path) throws.
-      // A duplicate here means another instance of this plugin is already serving that
-      // path (a live profile reload can briefly have both), which is fine — but one
-      // failed registration must never take the others, or the boot, down with it.
-      try {
-        webCtx.effect(
-          () => webCtx.webServer.register({ kind: "exact", path: route.path, handler: fixedBody(route.body, route.headers) }),
-          `remote-signin: ${route.path}`,
-        );
-      } catch (error) {
-        if (/duplicate/i.test(String(error?.message ?? error))) {
-          console.log(`[remote-signin] ${route.path} is already served; leaving that instance in place`);
-        } else {
-          console.error(`[remote-signin] could not serve ${route.path}: ${error?.message ?? error}`);
-        }
+    // Routes are a composition-level contract and a duplicate (kind, path) throws. A
+    // duplicate means another instance of this plugin already serves the panel (a live
+    // profile reload can briefly have both), which is fine — and one failed
+    // registration must never take the boot down with it.
+    try {
+      webCtx.effect(
+        () => webCtx.webServer.register({ kind: "exact", path: PANEL_PATH, handler: servePanel(panel) }),
+        `remote-signin: ${PANEL_PATH}`,
+      );
+    } catch (error) {
+      if (/duplicate/i.test(String(error?.message ?? error))) {
+        console.log(`[remote-signin] ${PANEL_PATH} is already served; leaving that instance in place`);
+      } else {
+        console.error(`[remote-signin] could not serve ${PANEL_PATH}: ${error?.message ?? error}`);
       }
     }
   });
@@ -222,19 +204,18 @@ export function apply(ctx, config = {}) {
     return;
   }
 
-  // Both assets are required: without the panel and the page there would be no way to
-  // bring the code back, and claiming a loopback origin would only turn a clear local
-  // failure into a dead end on the operator's machine.
-  const bridge = readAsset("bridge.html");
-  const panel = readAsset("inpage.js");
-  if (bridge === null || panel === null) {
-    console.error("[remote-signin] packaged assets are incomplete; remote sign-in stays off");
+  // The panel is required: without it there would be no way to bring the code back, and
+  // claiming a loopback origin would only turn a clear local failure into a dead end on
+  // the operator's machine.
+  const panel = readPanel();
+  if (panel === null) {
+    console.error("[remote-signin] the panel script is missing; remote sign-in stays off");
     return;
   }
 
   if (!claimSignIn(ctx, claim)) return;
-  serveAndInject(ctx, { bridge, panel });
-  console.log(`[remote-signin] active — v${VERSION}, claim ${claim}, panel at ${PANEL_PATH}, page at ${BRIDGE_PATH}`);
+  serveAndInject(ctx, panel);
+  console.log(`[remote-signin] active — v${VERSION}, claim ${claim}, panel at ${PANEL_PATH}`);
 }
 
 export default { name, inject, apply };
