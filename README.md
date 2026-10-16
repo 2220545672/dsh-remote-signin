@@ -73,6 +73,24 @@ dsh plugin --profile web add github:2220545672/dsh-remote-signin
 dsh --profile web --patch "$(node -p "require.resolve('dsh-remote-signin/cordis.patch.yml')")"
 ```
 
+### One caveat about where the package lives
+
+A patch entry's `name` is resolved from two anchors: the packages carried by the
+`@deepseek-ai/dsh` **installation** (its dependency closure), and the **profile**
+directory (`$DSH_HOME/profiles/<name>/node_modules`). A package installed anywhere else
+— a dependency of your own runtime manifest, or a copy in an image — is in neither, and
+`name: dsh-remote-signin` then fails with `ERR_MODULE_NOT_FOUND`. Two ways out, both
+used in practice:
+
+* install into the profile (`dsh plugin … add …`, above), where the name resolves; or
+* point the entry at the file, as the `dsh-unraid` image does:
+
+  ```yaml
+  - insert:
+      - id: remote-signin
+        name: file:///app/node_modules/dsh-remote-signin/src/index.js
+  ```
+
 The claim is the only setting, and it has a sane default:
 
 | Source | Meaning |

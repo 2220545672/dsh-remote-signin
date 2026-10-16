@@ -63,6 +63,19 @@ dsh plugin --profile web add github:2220545672/dsh-remote-signin
 dsh --profile web --patch "$(node -p "require.resolve('dsh-remote-signin/cordis.patch.yml')")"
 ```
 
+### 一个关于"包装在哪"的坑
+
+patch 条目的 `name` 只从两个锚点解析：`@deepseek-ai/dsh` **安装**所携带的包（它的依赖闭包），以及 **profile** 目录（`$DSH_HOME/profiles/<name>/node_modules`）。装在别处的包（你自己 runtime manifest 的依赖、或镜像里的一份拷贝）两个锚点都不占，于是 `name: dsh-remote-signin` 会报 `ERR_MODULE_NOT_FOUND`。两条出路，实践中都在用：
+
+* 装进 profile（上面的 `dsh plugin … add …`），名字就能解析；
+* 或者让条目直接指向文件——`dsh-unraid` 镜像就是这么做的：
+
+  ```yaml
+  - insert:
+      - id: remote-signin
+        name: file:///app/node_modules/dsh-remote-signin/src/index.js
+  ```
+
 唯一的设置是「声明用哪个回环 origin」，有合理默认值：
 
 | 来源 | 含义 |
