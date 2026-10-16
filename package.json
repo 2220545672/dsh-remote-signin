@@ -1,0 +1,48 @@
+{
+  "name": "dsh-remote-signin",
+  "version": "0.1.0",
+  "description": "Let a remote browser finish the DeepSeek account sign-in: claims the loopback redirect the platform requires, then brings the authorization code back through a paste panel injected into the DSH page.",
+  "type": "module",
+  "license": "MIT",
+  "private": false,
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./assets/*": "./assets/*"
+  },
+  "files": [
+    "src",
+    "assets",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2220545672/dsh-remote-signin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/2220545672/dsh-remote-signin/issues"
+  },
+  "homepage": "https://github.com/2220545672/dsh-remote-signin#readme",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "unraid",
+    "sign-in"
+  ]
+}

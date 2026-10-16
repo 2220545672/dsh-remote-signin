@@ -1,0 +1,13 @@
+# The entry this plugin adds to a DSH profile.
+#
+# `insert:` is required: a bare row targets an *existing* entry by id, and the
+# loader would warn "entry not found" and carry on — which is exactly how this
+# would fail silently.
+#
+# Loaded either through this file (`dsh --patch <path to this file>`, which is what
+# the dsh-unraid image's entrypoint does) or by adding the package to a profile's
+# `dsh.profile.bundles`, which picks the file up through package.json's
+# `dsh.bundle.patch`.
+- insert:
+    - id: remote-signin
+      name: dsh-remote-signin
